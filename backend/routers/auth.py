@@ -5,7 +5,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
+import bcrypt
 from jose import JWTError, jwt
 from datetime import datetime, timedelta
 import os
@@ -17,14 +17,18 @@ from schemas import UserRegister, UserLogin, UserResponse, TokenResponse
 router = APIRouter(prefix="/api/auth", tags=["認證"])
 
 # 密碼加密設定
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT 設定
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "dev-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 天
 
-# Bearer Token 驗證器
+# JWT 設定 驗證器
 security = HTTPBearer()
 
 

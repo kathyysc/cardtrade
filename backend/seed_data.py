@@ -4,9 +4,11 @@
 """
 from sqlalchemy.orm import Session
 from models import User, Card, Listing, CardRarity, CardCondition, CardType, ListingStatus
-from passlib.context import CryptContext
+import bcrypt
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def hash_pw(password: str) -> str:
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 
 def seed_database(db: Session):
@@ -24,7 +26,7 @@ def seed_database(db: Session):
         User(
             username="kathy",
             email="kathy@example.com",
-            hashed_password=pwd_context.hash("password123"),
+            hashed_password=hash_pw("password123"),
             whatsapp="+85263388538",
             display_name="Kathy",
             is_active=True,
@@ -32,7 +34,7 @@ def seed_database(db: Session):
         User(
             username="pokemon_master",
             email="ash@example.com",
-            hashed_password=pwd_context.hash("password123"),
+            hashed_password=hash_pw("password123"),
             whatsapp="+85291234567",
             display_name="小智",
             is_active=True,
@@ -40,7 +42,7 @@ def seed_database(db: Session):
         User(
             username="card_collector",
             email="misty@example.com",
-            hashed_password=pwd_context.hash("password123"),
+            hashed_password=hash_pw("password123"),
             whatsapp="+85298765432",
             display_name="小霞",
             is_active=True,
