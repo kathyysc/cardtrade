@@ -2,7 +2,8 @@
 Pydantic 資料驗證模型（Schemas）
 定義 API 請求和回應的資料結構
 """
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
+from pydantic import EmailStr  # 需要 email-validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
