@@ -4,9 +4,9 @@
  */
 import axios from 'axios'
 
-// 建立 axios 實例，預設使用 Vite 代理
+// 建立 axios 實例
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:8000/api',
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
