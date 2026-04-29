@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <circle cx="50" cy="50" r="45" fill="#f97316" stroke="#ea580c" stroke-width="3"/>
+  <text x="50" y="38" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="Arial">CARD</text>
+  <text x="50" y="56" text-anchor="middle" fill="white" font-size="14" font-weight="bold" font-family="Arial">TRADE</text>
+  <text x="50" y="74" text-anchor="middle" fill="white" font-size="10" font-family="Arial">🃏</text>
+</svg>

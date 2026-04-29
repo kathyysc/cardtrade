@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # 後端 API
+  backend:
+    build: ./backend
+    container_name: cardtrade-api
+    ports:
+      - "8000:8000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - DATABASE_URL=sqlite:///./cardtrade.db
+      - FRONTEND_URL=http://localhost:5173
+      - UPLOAD_DIR=uploads
+    volumes:
+      - ./backend/uploads:/app/uploads
+    restart: unless-stopped
+
+  # 前端
+  frontend:
+    build: ./frontend
+    container_name: cardtrade-web
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
