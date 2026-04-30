@@ -1,28 +1,22 @@
 """
-Google Gemini AI 卡片識別服務
-使用 Gemini Vision API 識別寶可夢卡片
+AI 卡片識別服務
+使用 Silicon Flow 免費 API（VL 模型識別圖片）
+免費申請：https://cloud.siliconflow.cn
+每個月 2,000 萬 token 免費額
 """
 import os
 import json
-import google.generativeai as genai
+import httpx
 from schemas import AIRecognitionResult
 
-
-def _init_gemini():
-    """初始化 Gemini API"""
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key or api_key == "your_gemini_api_key_here":
-        raise ValueError(
-            "請設定 GEMINI_API_KEY 環境變數。"
-            "免費申請：https://aistudio.google.com/apikey"
-        )
-    genai.configure(api_key=api_key)
-    return genai.GenerativeModel("gemini-2.0-flash")
+SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
+SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
+MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
 
 
 async def recognize_card(image_base64: str, mime_type: str) -> AIRecognitionResult:
     """
-    使用 Gemini Vision API 識別寶可夢卡片
+    使用 Silicon Flow VL API 識別寶可夢卡片
 
     參數：
         image_base64: 圖片的 base64 編碼
@@ -31,23 +25,13 @@ async def recognize_card(image_base64: str, mime_type: str) -> AIRecognitionResu
     回傳：
         AIRecognitionResult：識別結果
     """
-    model = _init_gemini()
-
-    # 建立圖片 parts
-    image_part = {
-        "mime_type": mime_type,
-        "data": image_base64
-    }
-
-    # 設定識別提示詞
-    prompt = """
-你是一位專業的寶可夢卡片鑑定師。請分析這張寶可夢卡片的照片，並返回以下資訊。
+    prompt = """你是一位專業的寶可夢卡片鑑定師。請分析這張寶可夢卡片的照片，並返回以下資訊。
 
 請嚴格按照以下 JSON 格式回應（不要加任何其他文字或 markdown 標記）：
 {
     "card_name": "卡片名稱（中英文都寫，如：皮卡丘 / Pikachu）",
     "card_number": "卡片編號（如 001/091）",
-    "set_name": "卡包名稱（如： Scarlet & Violet Base Set）",
+    "set_name": "卡包名稱（如：Scarlet & Violet Base Set）",
     "rarity": "稀有度，從以下選擇：Common, Uncommon, Rare, Holo Rare, Ultra Rare, Secret Rare, Special Illustration Rare, Gold Rare, Alt Art",
     "card_type": "屬性，從以下選擇：草, 火, 水, 雷, 超能力, 格鬥, 惡, 鋼, 妖精, 龍, 無色, 訓練家卡, 能量卡, 其他",
     "hp": 100,
@@ -57,28 +41,47 @@ async def recognize_card(image_base64: str, mime_type: str) -> AIRecognitionResu
 }
 
 注意事項：
-1. 如果是訓練家卡（Trainer）或能量卡（Energy），card_type 請填寫對應類型
-2. estimated_price_hkd 請估計港幣價格（参考二手市場行情）
-3. 如果無法辨識，confidence 設為 0，並在 description 說明原因
-4. 如果照片不是寶可夢卡片，card_name 填 "無法辨識"，confidence 設為 0
-5. 只回傳 JSON，不要任何其他格式
-"""
+1. estimated_price_hkd 請估計港幣價格（參考二手市場行情）
+2. 如果無法辨識，confidence 設為 0
+3. 如果照片不是寶可夢卡片，card_name 填 "無法辨識"，confidence 設為 0
+4. 只回傳 JSON，不要任何其他格式"""
+
+    headers = {
+        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": MODEL,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{mime_type};base64,{image_base64}"},
+                    },
+                ],
+            }
+        ],
+        "max_tokens": 500,
+        "temperature": 0.2,
+    }
 
     try:
-        # 呼叫 Gemini API
-        response = await model.generate_content_async(
-            [prompt, image_part],
-            generation_config={
-                "temperature": 0.2,  # 低溫度 = 更穩定的輸出
-                "top_p": 0.8,
-                "max_output_tokens": 500,
-            }
-        )
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(
+                f"{SILICONFLOW_BASE_URL}/chat/completions",
+                headers=headers,
+                json=payload,
+            )
+            response.raise_for_status()
+            result = response.json()
 
-        # 解析回應
-        text = response.text.strip()
+        text = result["choices"][0]["message"]["content"].strip()
 
-        # 清理可能的 markdown 標記
+        # 清理 markdown 標記
         if text.startswith("```"):
             text = text.split("\n", 1)[1] if "\n" in text else text[3:]
         if text.endswith("```"):
@@ -102,7 +105,6 @@ async def recognize_card(image_base64: str, mime_type: str) -> AIRecognitionResu
         )
 
     except json.JSONDecodeError as e:
-        # 如果 AI 回傳的不是有效 JSON，返回預設結果
         return AIRecognitionResult(
             card_name="識別失敗",
             description=f"AI 回傳格式異常，請重新拍照嘗試。錯誤：{str(e)[:100]}",
