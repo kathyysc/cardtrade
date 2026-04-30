@@ -10,7 +10,7 @@ import base64
 import httpx
 from schemas import AIRecognitionResult
 
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 MODEL = "google/gemini-2.0-flash-001"
 
 
@@ -18,6 +18,12 @@ async def recognize_card(image_bytes: bytes, mime_type: str) -> AIRecognitionRes
     """
     使用 OpenRouter VL API 識別寶可夢卡片
     """
+    if not OPENROUTER_API_KEY:
+        return AIRecognitionResult(
+            card_name="未設定 API Key",
+            description="請在 backend/.env 中設定 OPENROUTER_API_KEY（免費申請：https://openrouter.ai/keys）",
+            confidence=0.0,
+        )
     image_b64 = base64.b64encode(image_bytes).decode("utf-8")
     data_url = f"data:{mime_type};base64,{image_b64}"
 

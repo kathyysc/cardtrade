@@ -21,6 +21,14 @@ from dotenv import load_dotenv
 # 載入環境變數
 load_dotenv()
 
+# Debug：顯示 API Key 狀態
+_or_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+if _or_key:
+    print(f"✅ OPENROUTER_API_KEY 已設定（長度：{len(_or_key)}）")
+else:
+    print("⚠️ OPENROUTER_API_KEY 未設定！AI 識別將不可用")
+    print("   免費申請：https://openrouter.ai/keys")
+
 # 匯入資料庫和模型
 from database import engine, Base
 from models import User, Card, Listing  # noqa: F401
