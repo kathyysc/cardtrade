@@ -12,7 +12,7 @@ from schemas import AIRecognitionResult
 
 SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
 SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
-MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
+MODEL = "Qwen/Qwen2.5-VL-72B-Instruct"
 
 
 async def recognize_card(image_bytes: bytes, mime_type: str) -> AIRecognitionResult:
