@@ -1,8 +1,8 @@
 """
 AI 卡片識別服務
-使用 Silicon Flow 免費 API（VL 模型識別圖片）
-免費申請：https://cloud.siliconflow.cn
-每個月 2,000 萬 token 免費額
+使用 OpenRouter 免費 VL 模型識別圖片
+免費申請：https://openrouter.ai/keys
+Google Gemini Flash 免費額度充足
 """
 import os
 import json
@@ -10,23 +10,14 @@ import base64
 import httpx
 from schemas import AIRecognitionResult
 
-SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY", "")
-SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
-MODEL = "Qwen/Qwen2.5-VL-72B-Instruct"
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+MODEL = "google/gemini-2.0-flash-001"
 
 
 async def recognize_card(image_bytes: bytes, mime_type: str) -> AIRecognitionResult:
     """
-    使用 Silicon Flow VL API 識別寶可夢卡片
-
-    參數：
-        image_bytes: 圖片的原始 bytes
-        mime_type: 圖片的 MIME 類型（如 image/jpeg）
-
-    回傳：
-        AIRecognitionResult：識別結果
+    使用 OpenRouter VL API 識別寶可夢卡片
     """
-    # 將圖片轉為 base64
     image_b64 = base64.b64encode(image_bytes).decode("utf-8")
     data_url = f"data:{mime_type};base64,{image_b64}"
 
@@ -52,8 +43,10 @@ async def recognize_card(image_bytes: bytes, mime_type: str) -> AIRecognitionRes
 4. 只回傳 JSON，不要任何其他格式"""
 
     headers = {
-        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json",
+        "HTTP-Referer": "http://localhost:5173",
+        "X-Title": "CardTrade Pokemon Card Recognition",
     }
 
     payload = {
@@ -69,17 +62,16 @@ async def recognize_card(image_bytes: bytes, mime_type: str) -> AIRecognitionRes
         ],
         "max_tokens": 500,
         "temperature": 0.2,
-        "stream": False,
     }
 
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
-                f"{SILICONFLOW_BASE_URL}/chat/completions",
+                "https://openrouter.ai/api/v1/chat/completions",
                 headers=headers,
                 json=payload,
             )
-            
+
             if response.status_code != 200:
                 error_detail = response.text[:200]
                 return AIRecognitionResult(
@@ -115,10 +107,10 @@ async def recognize_card(image_bytes: bytes, mime_type: str) -> AIRecognitionRes
             confidence=data.get("confidence"),
         )
 
-    except json.JSONDecodeError as e:
+    except json.JSONDecodeError:
         return AIRecognitionResult(
             card_name="識別失敗",
-            description=f"AI 回傳格式異常，請重新拍照嘗試。",
+            description="AI 回傳格式異常，請重新拍照嘗試。",
             confidence=0.0,
         )
     except Exception as e:
