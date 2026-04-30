@@ -44,11 +44,8 @@ async def recognize_card_image(
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="圖片大小不能超過 5MB")
 
-    # 將圖片轉為 base64 編碼
-    image_base64 = base64.b64encode(content).decode("utf-8")
-
-    # 呼叫 Gemini API 進行卡片識別
-    result = await recognize_card(image_base64, file.content_type)
+    # 呼叫 AI API 進行卡片識別（傳入原始 bytes）
+    result = await recognize_card(content, file.content_type)
 
     return result
 

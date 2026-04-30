@@ -6,6 +6,7 @@ AI 卡片識別服務
 """
 import os
 import json
+import base64
 import httpx
 from schemas import AIRecognitionResult
 
@@ -14,17 +15,21 @@ SILICONFLOW_BASE_URL = "https://api.siliconflow.cn/v1"
 MODEL = "Qwen/Qwen2.5-VL-7B-Instruct"
 
 
-async def recognize_card(image_base64: str, mime_type: str) -> AIRecognitionResult:
+async def recognize_card(image_bytes: bytes, mime_type: str) -> AIRecognitionResult:
     """
     使用 Silicon Flow VL API 識別寶可夢卡片
 
     參數：
-        image_base64: 圖片的 base64 編碼
+        image_bytes: 圖片的原始 bytes
         mime_type: 圖片的 MIME 類型（如 image/jpeg）
 
     回傳：
         AIRecognitionResult：識別結果
     """
+    # 將圖片轉為 base64
+    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+    data_url = f"data:{mime_type};base64,{image_b64}"
+
     prompt = """你是一位專業的寶可夢卡片鑑定師。請分析這張寶可夢卡片的照片，並返回以下資訊。
 
 請嚴格按照以下 JSON 格式回應（不要加任何其他文字或 markdown 標記）：
@@ -58,25 +63,31 @@ async def recognize_card(image_base64: str, mime_type: str) -> AIRecognitionResu
                 "role": "user",
                 "content": [
                     {"type": "text", "text": prompt},
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": f"data:{mime_type};base64,{image_base64}"},
-                    },
+                    {"type": "image_url", "image_url": {"url": data_url}},
                 ],
             }
         ],
         "max_tokens": 500,
         "temperature": 0.2,
+        "stream": False,
     }
 
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(
                 f"{SILICONFLOW_BASE_URL}/chat/completions",
                 headers=headers,
                 json=payload,
             )
-            response.raise_for_status()
+            
+            if response.status_code != 200:
+                error_detail = response.text[:200]
+                return AIRecognitionResult(
+                    card_name="識別失敗",
+                    description=f"API 錯誤 {response.status_code}: {error_detail}",
+                    confidence=0.0,
+                )
+
             result = response.json()
 
         text = result["choices"][0]["message"]["content"].strip()
@@ -107,7 +118,7 @@ async def recognize_card(image_base64: str, mime_type: str) -> AIRecognitionResu
     except json.JSONDecodeError as e:
         return AIRecognitionResult(
             card_name="識別失敗",
-            description=f"AI 回傳格式異常，請重新拍照嘗試。錯誤：{str(e)[:100]}",
+            description=f"AI 回傳格式異常，請重新拍照嘗試。",
             confidence=0.0,
         )
     except Exception as e:
